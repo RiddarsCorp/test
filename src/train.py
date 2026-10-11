@@ -24,6 +24,10 @@ def main():
     ridge = make_pipeline(StandardScaler(), Ridge(alpha=1.0))
     print(format_report("Ridge CV", cv_report(ridge, train)))
 
+    final = make_pipeline(StandardScaler(), Ridge(alpha=1.0))
+    final.fit(df[FEATURES], df[TARGET])
+    print(format_report("Ridge holdout", report(holdout[TARGET], final.predict(holdout[FEATURES]))))
+
 
 if __name__ == "__main__":
     main()
