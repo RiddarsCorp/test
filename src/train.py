@@ -1,34 +1,28 @@
-"""Train a Ridge model predicting log solubility from molecular descriptors."""
+"""Model comparison by scaffold cross-validation and the final holdout evaluation."""
 
-import pandas as pd
-from sklearn.dummy import DummyRegressor
 from sklearn.linear_model import Ridge
-from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.model_selection import GroupKFold, cross_val_predict
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-SEED = 42
-FEATURES = ["mol_weight", "logp", "h_donors", "h_acceptors", "rings"]
-TARGET = "log_solubility"
+from src.config import FEATURES, N_FOLDS, TARGET
+from src.data import load_dataset
+from src.evaluate import format_report, report
+from src.splits import scaffold_groups, scaffold_split
 
 
-def cv_rmse(model, X, y):
-    scores = cross_val_score(model, X, y, cv=5, scoring="neg_root_mean_squared_error")
-    return -scores.mean()
+def cv_report(model, train):
+    groups = scaffold_groups(train)
+    pred = cross_val_predict(model, train[FEATURES], train[TARGET], groups=groups, cv=GroupKFold(N_FOLDS))
+    return report(train[TARGET], pred)
 
 
 def main():
-    df = pd.read_csv("data/molecules.csv")
-    # The test part is held out until the final evaluation.
-    X_train, X_test, y_train, y_test = train_test_split(
-        df[FEATURES], df[TARGET], test_size=0.2, random_state=SEED
-    )
+    df = load_dataset()
+    train, holdout = scaffold_split(df)
 
-    baseline = cv_rmse(DummyRegressor(strategy="mean"), X_train, y_train)
-    ridge = cv_rmse(make_pipeline(StandardScaler(), Ridge(alpha=1.0)), X_train, y_train)
-
-    print(f"Baseline CV RMSE: {baseline:.3f}")
-    print(f"Ridge CV RMSE:    {ridge:.3f}")
+    ridge = make_pipeline(StandardScaler(), Ridge(alpha=1.0))
+    print(format_report("Ridge CV", cv_report(ridge, train)))
 
 
 if __name__ == "__main__":
