@@ -23,6 +23,12 @@ def main():
 
     ridge = make_pipeline(StandardScaler(), Ridge(alpha=1.0))
     print(format_report("Ridge CV", cv_report(ridge, train)))
+    random_cv = cross_val_predict(ridge, train[FEATURES], train[TARGET], cv=5)
+    print(format_report("Ridge CV (5 folds)", report(train[TARGET], random_cv)))
+
+    final = make_pipeline(StandardScaler(), Ridge(alpha=1.0))
+    final.fit(train[FEATURES], train[TARGET])
+    print(format_report("Ridge holdout", report(holdout[TARGET], final.predict(holdout[FEATURES]))))
 
 
 if __name__ == "__main__":
